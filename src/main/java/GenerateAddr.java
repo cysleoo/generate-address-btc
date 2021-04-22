@@ -13,7 +13,7 @@ import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.wallet.DeterministicKeyChain;
 import org.bitcoinj.wallet.DeterministicSeed;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.base.Stopwatch;
 import com.google.gson.Gson;
 
 /**
@@ -24,33 +24,57 @@ public class GenerateAddr {
 
   public static void main(String[] args) {
     List<String> strList = Arrays.asList(args);
+    testGenerate(strList);
 
-    long start= System.currentTimeMillis();
-    int i = 1;
-    while (i < 5000) {
-      generateAddr(strList);
-      i++;
-    }
-    long end = System.currentTimeMillis();
-
-    long total = end - start;
-    System.out.println("total cost: "+total);
+    // // 1.准备数据
+    // int times = 1;
+    // List<List<String>> batchList = new ArrayList<>(1);
+    // while (times > 0) {
+    //   batchList.add(strList);
+    //   times--;
+    // }
+    //
+    // long start= System.currentTimeMillis();
+    //
+    // batchList.parallelStream().forEach(GenerateAddr::generateAddr);
+    // // batchList.stream().forEach(GenerateAddr::generateAddr);
+    //
+    // long end = System.currentTimeMillis();
+    //
+    // long total = end - start;
+    // System.out.println("total cost: "+total);
 
     // System.out.println(new Gson().toJson(strings));
 
   }
 
-  static List<String> generateAddr(List<String> wordsList) {
+  static void testGenerate(List<String> wordsList) {
+    ArrayList<ChildNumber> childNumbers = new ArrayList<>();
+    childNumbers.add(new ChildNumber(44,true));
+    childNumbers.add(new ChildNumber(0,true));
+    childNumbers.add(new ChildNumber(0,true));
+    childNumbers.add(new ChildNumber(0,false));
+    childNumbers.add(new ChildNumber(0,false));
+    List<String> strings = generateAddr(wordsList,childNumbers );
+    System.out.println(new Gson().toJson(strings));
+
+  }
+
+
+
+
+  static List<String> generateAddr(List<String> wordsList,
+      List<ChildNumber> childNumberList) {
+    Stopwatch stopwatch = Stopwatch.createStarted();
     ArrayList<String> resultList = new ArrayList<String>();
 
     DeterministicSeed deterministicSeed = new DeterministicSeed(wordsList, null, "", 0);
     DeterministicKeyChain deterministicKeyChain =
         DeterministicKeyChain.builder().seed(deterministicSeed).build();
 
-    ArrayList<ChildNumber> childNumbers = new ArrayList<ChildNumber>();
-    for (int i = 0; i < 10; i++) {
-      String path = "m/44'/0'/0'/0/" + i;
-      DeterministicKey keyByPath = deterministicKeyChain.getKeyByPath(parsePath(path), true);
+      String path = "m/44'/0'/0'/0/0";
+      // DeterministicKey keyByPath = deterministicKeyChain.getKeyByPath(parsePath(path), true);
+      DeterministicKey keyByPath = deterministicKeyChain.getKeyByPath(childNumberList, true);
       BigInteger privKey = keyByPath.getPrivKey();
       ECKey ecKey = ECKey.fromPrivate(privKey);
       String publicKey = ecKey.getPublicKeyAsHex();
@@ -60,12 +84,14 @@ public class GenerateAddr {
       String address = ecKey.toAddress(networkParameters).toString();
 
       resultList.add(address);
-    }
+
+    stopwatch.stop();
+    System.out.println(stopwatch.toString());
 
     return  resultList;
   }
 
-  public static List<ChildNumber> parsePath(@Nonnull String path) {
+   static List<ChildNumber> parsePath(@Nonnull String path) {
     String[] parsedNodes = path.replace("m", "").split("/");
     List<ChildNumber> nodes = new ArrayList<>();
 
